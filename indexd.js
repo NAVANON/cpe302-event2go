@@ -14,6 +14,8 @@ mongoose.connect('mongodb://localhost:27017/evant2go', { useNewUrlParser: true, 
 const UsersSchema = new mongoose.Schema({
     name: String,
     age: Number,
+    gender: String,
+    bday:Date,
     email: String,
     password: String, 
 });
@@ -35,12 +37,25 @@ app.post('/Register', validateUserData, async (req, res, next) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
-        // Create new user with hashed password
-        const newUser = await UserModel.create({
+        // Extract and convert birthday from request body to Date object
+        let bday = new Date(req.body.bday); // ใช้ let หรือ var แทน const
+
+        // Calculate age from birthday
+        const today = new Date();
+        let age = today.getFullYear() - bday.getFullYear(); // ใช้ let หรือ var แทน const
+        const monthDiff = today.getMonth() - bday.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < bday.getDate())) {
+            age--;
+        }
+
+        // Create new user with hashed password, age, and birthday
+        let newUser = await UserModel.create({
             name: req.body.name,
-            age: req.body.age,
+            age: age,
             email: req.body.email,
-            password: hashedPassword
+            password: hashedPassword,
+            gender: req.body.gender,
+            bday: bday // Insert birthday data
         });
 
         res.json({ status: 'ok', newUser });
@@ -50,7 +65,7 @@ app.post('/Register', validateUserData, async (req, res, next) => {
 });
 
 function validateUserData(req, res, next) {
-    const requiredFields = ['name', 'age', 'email', 'password'];
+    const requiredFields = ['name', 'age', 'email', 'password', 'gender', 'bday'];
     const missingFields = [];
 
     requiredFields.forEach(field => {
@@ -67,6 +82,7 @@ function validateUserData(req, res, next) {
 
     next();
 }
+
 //Login//
 app.post("/login", async (req, res, next) => {
     const { email, password } = req.body;
